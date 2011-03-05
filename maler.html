@@ -1,0 +1,412 @@
+<html>
+<head>
+<title>Maler</title>
+<style type="text/css">
+body {padding:0px; margin:0px; background-color:#222255; font-size:12px; font-face:Ubuntu,sans-serif}
+#draw {position:absolute; top:0px; left:0px; }
+#tools {position:fixed;height:30px;bottom:0px;width:100%;text-align:center;padding:0px;margin:0px;vertical-align:middle;background-color:#222255;}
+.tool {margin-left:2px;margin-right:2px;height:22px;width:22px;display:inline-block;margin-top:4px;}
+.checked {border-bottom:3px solid #FFFFFF;height:19px;}
+.spacer {width:15px;display:inline-block}
+.overlay {position:fixed;width:100%;height:100%;background-color:rgba(0,0,0,0.8);display:none}
+#help {position:fixed; background-color:#FFFFFF; width:300px; height:200px; border:2px black solid; top:50%;left:50%;margin-left:-150px;margin-top:-100px; text-align:center; vertical-align:middle}
+#save {position:fixed; background-color:#FFFFFF; width:620px; height:420px; border:2px black solid; top:50%;left:50%;margin-left:-310px;margin-top:-200px; text-align:center; vertical-align:middle}
+#msg {position:fixed; background-color:#FFFFFF; width:300px; height:100px; border:2px black solid; top:50%;left:50%;margin-left:-150px;margin-top:-100px; text-align:center; vertical-align:middle; padding:10px}
+#msg-p {text-align:center; vertical-align:middle;display:block}
+#load {position:fixed; background-color:#FFFFFF; width:620px; height:420px; border:2px black solid; top:50%;left:50%;margin-left:-310px;margin-top:-200px; text-align:center; vertical-align:middle}
+a:link, a:visited {color:black; text-decoration:none}
+a:hover, a:active {color:black; text-decoration:underline}
+input {margin:6px}
+h1 {font-size:16px}
+th, td {text-align:left;padding-right:10px;}
+#loadList {width:600px;border-collapse:collapse}
+#loadBody {overflow-x:hidden;overflow-y:auto; height:290px;margin-left:10px;display:table-row-group}
+#slide-indicator {position:fixed;bottom:8px;right:3px;color:#FFFFFF;font-size:8px}
+.loadrow {cursor:pointer}
+.marker {position:absolute; background-color:#555555; height:4px;width:4px;display:block;margin-left:-2px;margin-top:-2px}
+</style>
+<script src="http://static.scienceco.de/jquery-1.5.1.min.js" type="application/x-javascript"></script>
+<script type="application/x-javascript">
+// <!--
+// <![CDATA[
+
+
+$(document).ready(function(){
+	$("p").remove();
+	$("<canvas width=\""+$(document).width()+"\" height=\""+($(document).height()-30)+"\" id=\"draw\"></canvas>").appendTo("body");
+	var slides = new Array();
+	var currentSlide=0;
+	var slideIndicator = $("<div id=\"slide-indicator\">1/1</div>");
+	var changeCurrentSlide = function (newslide, total) {
+		currentSlide = newslide;
+		if (total<(newslide+1)) {
+		total++;
+		}
+		slideIndicator.text((newslide+1)+"/"+total);
+	}
+	var ctx = document.getElementById("draw").getContext("2d");
+	ctx.fillStyle = "#FFFFFF";
+	ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+	ctx.fill();
+	var currentColor = "#000000";
+	var erase = false;
+	var changeColor = function (color) {
+		currentColor = color;
+		if (!erase) {
+			ctx.strokeStyle = currentColor;
+			ctx.fillStyle = currentColor;
+		} else {
+			ctx.strokeStyle = "#FFFFFF";
+			ctx.fillStyle = "#FFFFFF";
+		}
+	}
+	changeColor(currentColor);
+	var brushSize = 5;
+	var down = 0;
+	var lastpoint = new Array (-1,0);
+	var drawer = function(e){
+		if (down) {
+			ctx.lineWidth = 2*brushSize;
+			ctx.lineCap = "round";
+			ctx.beginPath();
+			if (lastpoint[0] == -1) {
+        		ctx.arc(e.pageX,e.pageY,brushSize, 0, 2*Math.PI, true);
+        		ctx.fill();
+			} else {
+				ctx.moveTo(lastpoint[0],lastpoint[1]);
+				ctx.lineTo(e.pageX,e.pageY);
+				ctx.stroke();
+			}
+			lastpoint[0] = e.pageX; lastpoint[1] = e.pageY;
+		}
+	}
+	var polyCoords = new Array();
+	var createPolygon = function(e) {
+		polyCoords[polyCoords.length] = new Array(e.pageX,e.pageY);
+		$("<span>").addClass("marker").css({'left':e.pageX+"px",'top':e.pageY+"px"}).click(function(e){fillPolygon()}).appendTo("body");
+	}
+	var fillPolygon = function () {
+		ctx.beginPath();
+		ctx.moveTo(polyCoords[0][0], polyCoords[0][1]);
+		for (var m=1;m<polyCoords.length;m++) {
+			ctx.lineTo(polyCoords[m][0], polyCoords[m][1]);
+		}
+		ctx.lineTo(polyCoords[0][0], polyCoords[0][1]);
+		ctx.fill();
+		$(".marker").remove();
+		polyCoords = new Array();
+	}
+	var setDrawMode = function (newmode) {
+		$("#draw").unbind();
+		if (newmode==1) {
+			$("#draw").mousedown(function(){down=1;lastpoint[0]=-1});
+			$("#draw").mouseup(function(){down=0});
+			$("#draw").click(function(e){down=1;drawer(e);down=0})
+			$("#draw").mouseout(function(){down=0});
+			$("#draw").mousemove(function(e){drawer(e)});
+		} else {
+			$("#draw").click(function(e){createPolygon(e)}).dblclick(function(e){fillPolygon()});
+		}
+	}
+	setDrawMode(1);
+	$("<div id=\"tools\"></div>").appendTo("body");
+	
+	// Create tool icons
+	$("<span style=\"background-image:url('./draw-freehand.png');\" class=\"tool checked\" alt=\"Zeichnen\" id=\"pencil\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./draw-eraser.png');\" class=\"tool\" alt=\"Radieren\" id=\"erase\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./draw-polygon.png');\" class=\"tool\" alt=\"Poligon Zeichnen\" id=\"polydraw\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./erase-polygon.png');\" class=\"tool\" alt=\"Polygon L&ouml;schen\" id=\"polyrase\"></span>").appendTo("#tools");
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+	$("<span class=\"color tool checked\" style=\"background-color:#000000\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#FF0000\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#00FF00\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#0000FF\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#FFFF00\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#00FFFF\"></span>").appendTo("#tools");
+	$("<span class=\"color tool\" style=\"background-color:#FF00FF\"></span>").appendTo("#tools");
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+
+	// Create pencil size chooser
+	var ps = $("<canvas id=\"pencilSize\" width=\"59\" height=\"22\" />").appendTo("#tools");
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+	// Make pencil size chooser functional
+	var psCtx = document.getElementById("pencilSize").getContext("2d");
+	var drawPs = function() {
+		psCtx.fillStyle = "#222255";
+		psCtx.fillRect(0, 0, 89, 22);
+		psCtx.fill();
+		psCtx.strokeStyle = "#FFFFFF";
+		psCtx.fillStyle = "#FFFFFF";
+		if ((currentColor!="rgb(0, 0, 0)") && (currentColor!="#000000") && (!erase)) {
+			psCtx.strokeStyle = currentColor;
+			psCtx.fillStyle = currentColor;
+		}
+		psCtx.beginPath();
+        psCtx.arc(10,10,2, 0, 2*Math.PI, true);
+        psCtx.arc(23,10,5, 0, 2*Math.PI, true);
+        psCtx.arc(43,10,9, 0, 2*Math.PI, true);
+        psCtx.fill();
+	}
+	drawPs();
+	ps.click(function(e){
+		var xpos = e.pageX - ps.offset().left;
+		if (xpos<15) {
+			brushSize = 2;
+		} else if (xpos<30) {
+			brushSize = 5;
+		} else {
+			brushSize = 9;
+		}
+	});
+	
+	
+	
+	// Make tool icons functional
+	$("#pencil").click(function(){setDrawMode(1);erase=false;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#pencil").addClass("checked")});
+	$("#erase").click(function(){setDrawMode(1);erase=true;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#erase").addClass("checked")});
+	$("#polydraw").click(function(){setDrawMode(2);erase=false;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#polydraw").addClass("checked")});
+	$("#polyrase").click(function(){setDrawMode(2);erase=true;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#polyrase").addClass("checked")});
+	$(".color").click(function(){erase=false;changeColor(this.style.backgroundColor);drawPs();$(".color").removeClass("checked");$(this).addClass("checked");$("#pencil").addClass("checked");$("#erase").removeClass("checked");});
+	
+	// Create navigation icons
+	$("<span style=\"background-image:url('./go-previous.png');\" class=\"tool\" alt=\"vorherige Folie\" id=\"previous\"></span>").click(function(){
+		slides[currentSlide] = new Image();
+		slides[currentSlide].src = document.getElementById("draw").toDataURL();
+		if (currentSlide!=0) {
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+			ctx.fill();
+			changeColor(currentColor);
+			changeCurrentSlide(currentSlide-1, slides.length);
+			//alert(load.src);
+			ctx.drawImage(slides[currentSlide],0,0);
+		}
+		}).appendTo("#tools");
+	$("<span style=\"background-image:url('./go-next.png');\" class=\"tool\" alt=\"n&auml;chste Folie\" id=\"next\"></span>").click(function(){
+		slides[currentSlide] = new Image();
+		slides[currentSlide].src = document.getElementById("draw").toDataURL();
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+		ctx.fill();
+		changeColor(currentColor);
+		changeCurrentSlide(currentSlide+1, slides.length);
+		if (slides[currentSlide]) {
+			ctx.drawImage(slides[currentSlide],0,0);
+		}
+		}).appendTo("#tools");
+	
+	// Create 'Clear' icon and make it functional
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./edit-clear.png');\" class=\"tool\" alt=\"L&ouml;schen\" ></span>").click(function(){ctx.fillStyle = "#FFFFFF";ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);ctx.fill();slides[currentSlide] = new Image();}).appendTo("#tools");
+	
+	
+	// Create Help+Info Window
+	$("<div id=\"help-overlay\" class=\"overlay\"></div>").appendTo("body");
+	$("<div id=\"help\"><h1>Info</h1><p>Programming: Johannes Barthel<br />Icons: <a href=\"http://tango.freedesktop.org/Tango_Icon_Library\">Tango Icon Library</a><br />Javascript Toolkit: <a href=\"http://www.jquery.com/\">JQuery</a><br />Special thanks to <a href=\"http://scienceco.de/~levu/\">levu</a><br />for ideas, regexps and bug hunting.</p></div>").appendTo("#help-overlay");
+	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" />").click(function(){$("#help-overlay").css("display","none")}).appendTo("#help");
+	$("<span style=\"background-image:url('./help-browser.png');\" class=\"tool\" alt=\"hilfe\"></span>").click(function(){$("#help-overlay").css("display","block")}).appendTo("#tools");
+
+	// Create Message Overlay
+	$("<div id=\"msg-overlay\" class=\"overlay\"></div>").appendTo("body");
+	$("<div id=\"msg\"><p id=\"msg-p\"></p></div>").appendTo("#msg-overlay");
+	$("<img src=\"./emblem-unreadable.png\" style=\"position:absolute;bottom:10px;left:150px\" alt=\"Schlie&szlig;en\" />").click(function(){$("#msg-overlay").css("display","none")}).appendTo("#msg");
+	var msgAlert = function (msg) {
+		$("#msg-p").text(msg);
+		$("#msg-overlay").css("display","block");
+	}
+
+	// Create save window
+	$("<div id=\"save-overlay\" class=\"overlay\"></div>").appendTo("body");
+	$("<div id=\"save\"><h1>Speichern</h1></div>").appendTo("#save-overlay");
+	$("<canvas width=\"600\" height=\"285\" id=\"saveCanvas\"></canvas>").appendTo("#save");
+	var saveCtx = document.getElementById("saveCanvas").getContext("2d");
+	saveCtx.lineWidth = 5;
+	saveCtx.lineCap = "round";
+	saveCtx.strokeStyle = "#000000";
+	saveCtx.fillStyle = "#FFFFFF";
+	saveCtx.fillRect(0,0,620,250);
+	saveCtx.fillStyle = "#FF3333";
+	saveCtx.fillRect(0,250,620,35);
+	saveCtx.fillStyle = "#000000";
+	var saveDown = 0;
+	var saveLastpoint = new Array(-1, 0);
+	var saveOcr = function () {
+		var saveOcrRequest = $.post("storage.php?action=recognise", {img:document.getElementById("saveCanvas").toDataURL().substring(22)}, function (ocrText) {document.getElementById("saveName").value = ocrText;saveName = ocrText});
+	}
+	$("#saveCanvas").mousedown(function(){saveDown=1;saveLastpoint[0]=-1});
+	$("#saveCanvas").mouseout(function(){saveDown=0;});
+	$("#saveCanvas").mouseup(function(){saveDown=0;saveOcr();});
+	var saveDrawer = function(e) {
+		var xpos = e.pageX - $("#saveCanvas").offset().left;
+		var ypos = e.pageY - $("#saveCanvas").offset().top;
+		if (saveDown) {
+			if (ypos>=250) {
+				saveCtx.fillStyle = "#FFFFFF";
+				if (saveLastpoint[0] == -1) {
+					saveCtx.fillRect(xpos-2,0,5,250);
+					saveCtx.fillStyle = "#FF3333";
+					saveCtx.fillRect(xpos-2,250,5,35);
+				} else {
+					saveCtx.fillRect(saveLastpoint[0],0,xpos-saveLastpoint[0],250);
+					saveCtx.fillStyle = "#FF3333";
+					saveCtx.fillRect(saveLastpoint[0],250,xpos-saveLastpoint[0],35);
+				}
+				saveCtx.fillStyle = "#000000";
+			} else {
+				saveCtx.beginPath();
+				if (saveLastpoint[0] == -1) {
+        			saveCtx.arc(xpos,ypos,2, 0, 2*Math.PI, true);
+        			saveCtx.fill();
+				} else {
+					saveCtx.moveTo(saveLastpoint[0],saveLastpoint[1]);
+					saveCtx.lineTo(xpos,ypos);
+					saveCtx.stroke();
+				}
+			}
+			saveLastpoint[0] = xpos; saveLastpoint[1] = ypos;
+		}
+	}
+	$("#saveCanvas").mousemove(function(e){saveDrawer(e)});
+	$("#saveCanvas").click(function(e){saveDown=1;saveDrawer(e);saveDown=0;});
+	$("<form name=\"saveForm\" id=\"saveForm\" action=\"#\" method=\"get\"></form>").appendTo("#save");
+	$("<input type=\"text\" name=\"saveName\" id=\"saveName\" />").appendTo("#saveForm");
+	$("<select name=\"saveClass\" id=\"saveClass\" size=\"1\" style=\"text-align:right\"></select>").appendTo("#saveForm");
+	$("<input type=\"button\" name=\"saveSubmit\" id=\"saveSubmit\" value=\"Speichern\" />").appendTo("#saveForm");
+	$("<div id=\"throbber-overlay\" class=\"overlay\" style=\"text-align:center;vertical-align:middle\"><img src=\"./throbber.gif\" alt=\"Lade...\" style=\"background-color:#FFFFFF; padding:10px;margin-top:" + (($(document).height()/2)-26) + "px;border:2px #000000 solid;\" /></div>").appendTo("body");
+	$("#saveSubmit").click(function(e) {
+			e.preventDefault();
+			$("#save-overlay").css("display","none");
+			$("#throbber-overlay").css("display","block");
+			var slideSend = "";
+			slides[currentSlide] = new Image();
+			slides[currentSlide].src = document.getElementById("draw").toDataURL();
+			for (var j=0;j<slides.length;j++) {
+				slideSend = slideSend + " " + slides[j].src.substring(22);
+			}
+			var saveSubmitRequest = $.post("storage.php?action=save", {'file':slideSend.substring(1), 'name':document.forms.saveForm.saveName.value, 'class':document.forms.saveForm.saveClass.value}, function (message) {
+					$("#throbber-overlay").css("display","none");
+					msgAlert(message);
+				});
+		});
+	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" />").click(function(){$("#save-overlay").css("display","none")}).appendTo("#save");
+
+	
+	// Create save Icon
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./document-save.png');\" class=\"tool\" alt=\"Speichern\" ></span>").click(function(){$("#save-overlay").css("display","block")}).appendTo("#tools");
+	
+	
+	// Create load window
+	$("<div id=\"load-overlay\" class=\"overlay\"></div>").appendTo("body");
+	$("<div id=\"load\"><h1>Laden</h1></div>").appendTo("#load-overlay");
+	$("<form name=\"loadForm\" id=\"loadForm\" action=\"#\" method=\"get\"></form>").appendTo("#load");
+	$("<select name=\"loadClass\" id=\"loadClass\" size=\"1\" style=\"text-align:right\"></select>").change(function(){saveClass=this.value}).appendTo("#loadForm");
+	$("<option>Alle</option>").appendTo("#loadClass");
+	var loadFlipchart = function (flipchart) {
+		$("#load-overlay").css("display", "none");
+		$("#throbber-overlay").css("display","block");
+		var flipDate;
+		var flipName;
+		var flipClass;
+		if (flipchart.length == 3) {
+			flipClass = flipchart[0];
+			flipName = flipchart[1];
+			flipDate = flipchart[2];
+		} else {
+			flipName = flipchart[0];
+			flipDate = flipchart[1];
+			flipClass = document.forms.loadForm.loadClass.value;
+		}
+		var request = $.post("./storage.php?action=getfiles", {'class':flipClass, 'date':flipDate, 'name':flipName, 'width':$(document).width(), 'height':($(document).height()-30)}, function(files){
+			slides = new Array();
+			var newSlideSrcs = files.split(" ");
+			for (var l=0;l<newSlideSrcs.length-1;l++) {
+				slides[l] = new Image();
+				slides[l].src = "data:image/png;base64,"+newSlideSrcs[l];
+			}
+			changeCurrentSlide(0, slides.length);
+			slides[0].onload = function() {
+				ctx.drawImage(slides[0],0,0);
+				$("#throbber-overlay").css("display","none");
+				slides.slice(0, -1);
+			};
+			});
+	}
+	$("<table id=\"loadList\"></table>").appendTo("#loadForm");
+	var loadTopRow = $("<thead><tr><th id=\"classClass\">Klasse</th><th>Name</th><th>Datum</th></tr></thead>");
+	loadTopRow.appendTo("#loadList");
+	var loadBody = $("<tbody id=\"loadBody\"></tbody>");
+	loadBody.appendTo("#loadList");
+	$("#loadClass").change(function() {
+		var request = $.post("./storage.php?action=list", {'class':(document.forms.loadForm.loadClass.value=="Alle")?"":document.forms.loadForm.loadClass.value}, function(filesList) {
+			$("#loadBody").children().remove();
+			if (filesList != "nothing") {
+				var entries = filesList.split(" ");
+				var currentEntry;
+				var hasClass = false;
+				$("#classClass").css("display", "none");
+				if (entries[0].search(/#/)!=-1) {
+					$("#classClass").css("display", "inline");
+					hasClass = true;
+				}
+				for (var k=0;k<entries.length;k++) {
+					currentEntry = entries[k].replace(/(-|#)/g, " ").split(" ");
+					if (!hasClass) {
+						$("<tr class=\"loadrow\"><td>"+currentEntry[0]+"</td><td>"+new Date(currentEntry[1]*1000).toLocaleString()+"</td></tr>").click((function(x){return function() {loadFlipchart(x)}})(currentEntry)).appendTo("#loadBody");
+					} else {
+						$("<tr class=\"loadrow\"><td>"+currentEntry[0]+"</td><td>"+currentEntry[1]+"</td><td>"+new Date(currentEntry[2]*1000).toLocaleString()+"</td></tr>").click((function(x){return function() {loadFlipchart(x)}})(currentEntry)).appendTo("#loadBody");
+					}
+				}
+				if (k<13) {
+					$("#loadBody").css('height', (k*21)+"px");
+					$("#loadBody").css('overflow-y', 'visible');
+				} else {
+					$("#loadBody").css('height', 290);
+					$("#loadBody").css('overflow-y', 'scroll');
+				}
+			} else {
+				$("<tr><td>Keine Eintr&auml;ge</td></tr>").appendTo("#loadList");
+			}
+			});
+		});
+	$("#loadClass").change();
+	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" style=\"position:absolute;left:50%;bottom:10px;margin-left:-11px\" />").click(function(){$("#load-overlay").css("display","none")}).appendTo("#load");
+	// Create load Icon
+	$("<span style=\"background-image:url('./document-open.png');\" class=\"tool\" alt=\"Laden\" ></span>").click(function(){$("#loadClass").change();$("#load-overlay").css("display","block")}).appendTo("#tools");
+	
+	// Create 'new flipchart' icon
+	$("<span style=\"background-image:url('./document-new.png');\" class=\"tool\" alt=\"Laden\" ></span>").click(function(){
+		slides = new Array();
+		changeCurrentSlide(0, 1);
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+		ctx.fill();
+		changeColor(currentColor);
+		}).appendTo("#tools");
+	
+	// Make all links (-> info window) open in new tab
+	for (i=0;i<document.links.length;i++) {
+		document.links[i].target="_blank";
+	}
+	
+	// Fill class lists in save and load window
+	var classes = new Array();
+	$.get("./storage.php", {'action':'classes'}, function(response) {
+		classes = response.split(" ");
+		for (var i=0;i<classes.length;i++) {
+			$("<option>"+classes[i]+"</option>").appendTo("#saveClass,#loadClass");
+		}
+		});
+	
+	// Make slide indicator appear
+	slideIndicator.appendTo("body");
+	
+}); // End $(document).ready()
+
+//]]>-->
+</script>
+</head>
+<body>
+<p>Bitte Javascript aktivieren.</p>
+</body>
+</html>

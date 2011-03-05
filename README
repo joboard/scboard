@@ -1,0 +1,38 @@
+1) Welcome to scboard!
+This file contains information about how to set up the
+software. For licensing information, see 'LICENSE'.
+
+
+2) Supported Platforms
+This is developed to run on a server with apache2 on Linux and clients using
+Mozilla Firefox. Other webservers and browsers might work as well. If you find
+bugs with other configurations, you are welcome to write patches and submit them
+back to the project.
+
+
+3) How to set up a new installation:
+
+3.1) Prequisites
+- You need a web server that is accessible by your whiteboard machines. Having
+  the server in the LAN improves speed, however it is difficult to access the
+  slides from other locations in that case, you'd need port forwarding etc.
+- The web server needs to support php, and php must have write access to some
+  part of the file system so we can store the slides there.
+
+3.2) Installing
+- Copy maler.html, storage.php and the icon images (.png files) to a directory
+  of your web server.
+- Download the jQuery javascript toolkit from
+  http://code.jquery.com/jquery-1.5.1.min.js
+  and put that file where you put the scboard files.
+- Create a subdirectory called 'stored' there.
+- Go to this new directory and create subdirectories for all classes that shall
+  use the software. Make sure that the php script (read: the webserver) has
+  full read/write access to these directories.
+- Make sure the following software is installed on the server. If it is not,
+  install it.
+   - ocrad (http://www.gnu.org/software/ocrad/) 
+   - Imagemagick (http://imagemagick.org/). 
+   - bash (http://tiswww.case.edu/php/chet/bash/bashtop.html)
+- You should now be able to access the program through a webbrowser from your
+  whiteboard machines.
