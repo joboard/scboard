@@ -24,8 +24,10 @@ th, td {text-align:left;padding-right:10px;}
 #slide-indicator {position:fixed;bottom:8px;right:3px;color:#FFFFFF;font-size:8px}
 .loadrow {cursor:pointer}
 .marker {position:absolute; background-color:#555555; height:4px;width:4px;display:block;margin-left:-2px;margin-top:-2px}
+#import {position:fixed; background-color:#FFFFFF; width:400px; height:160px; border:2px black solid; top:50%;left:50%;margin-left:-200px;margin-top:-80px; text-align:center; vertical-align:middle}
+#importIframe {display:none}
 </style>
-<script src="http://static.scienceco.de/jquery-1.5.1.min.js" type="application/x-javascript"></script>
+<script src="./jquery-1.5.1.min.js" type="application/x-javascript"></script>
 <script type="application/x-javascript">
 // <!--
 // <![CDATA[
@@ -96,19 +98,21 @@ $(document).ready(function(){
 		$(".marker").remove();
 		polyCoords = new Array();
 	}
+	var drawMode = 1;
 	var setDrawMode = function (newmode) {
 		$("#draw").unbind();
+		drawMode = newmode;
 		if (newmode==1) {
-			$("#draw").mousedown(function(){down=1;lastpoint[0]=-1});
-			$("#draw").mouseup(function(){down=0});
-			$("#draw").click(function(e){down=1;drawer(e);down=0})
-			$("#draw").mouseout(function(){down=0});
-			$("#draw").mousemove(function(e){drawer(e)});
+			$("#draw").mousedown(function(){down=1;lastpoint[0]=-1})
+					  .mouseup(function(){down=0})
+					  .click(function(e){down=1;drawer(e);down=0})
+					  .mouseout(function(){down=0})
+					  .mousemove(function(e){drawer(e)});
 		} else {
 			$("#draw").click(function(e){createPolygon(e)}).dblclick(function(e){fillPolygon()});
 		}
 	}
-	setDrawMode(1);
+	setDrawMode(drawMode);
 	$("<div id=\"tools\"></div>").appendTo("body");
 	
 	// Create tool icons
@@ -166,7 +170,19 @@ $(document).ready(function(){
 	$("#erase").click(function(){setDrawMode(1);erase=true;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#erase").addClass("checked")});
 	$("#polydraw").click(function(){setDrawMode(2);erase=false;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#polydraw").addClass("checked")});
 	$("#polyrase").click(function(){setDrawMode(2);erase=true;changeColor(currentColor);drawPs();$(".checked").not(".color").removeClass("checked");$("#polyrase").addClass("checked")});
-	$(".color").click(function(){erase=false;changeColor(this.style.backgroundColor);drawPs();$(".color").removeClass("checked");$(this).addClass("checked");$("#pencil").addClass("checked");$("#erase").removeClass("checked");});
+	$(".color").click(function(){
+		erase=false;
+		changeColor(this.style.backgroundColor);
+		drawPs();
+		$(".color").removeClass("checked");
+		$(this).addClass("checked");
+		$(".tool").not(".color").removeClass("checked");
+		if (drawMode == 1) {
+			$("#pencil").addClass("checked");
+		} else {
+			$("#polydraw").addClass("checked");
+		}
+		});
 	
 	// Create navigation icons
 	$("<span style=\"background-image:url('./go-previous.png');\" class=\"tool\" alt=\"vorherige Folie\" id=\"previous\"></span>").click(function(){
@@ -233,9 +249,9 @@ $(document).ready(function(){
 	var saveOcr = function () {
 		var saveOcrRequest = $.post("storage.php?action=recognise", {img:document.getElementById("saveCanvas").toDataURL().substring(22)}, function (ocrText) {document.getElementById("saveName").value = ocrText;saveName = ocrText});
 	}
-	$("#saveCanvas").mousedown(function(){saveDown=1;saveLastpoint[0]=-1});
-	$("#saveCanvas").mouseout(function(){saveDown=0;});
-	$("#saveCanvas").mouseup(function(){saveDown=0;saveOcr();});
+	$("#saveCanvas").mousedown(function(){saveDown=1;saveLastpoint[0]=-1})
+					.mouseout(function(){saveDown=0;})
+					.mouseup(function(){saveDown=0;saveOcr();});
 	var saveDrawer = function(e) {
 		var xpos = e.pageX - $("#saveCanvas").offset().left;
 		var ypos = e.pageY - $("#saveCanvas").offset().top;
@@ -266,8 +282,8 @@ $(document).ready(function(){
 			saveLastpoint[0] = xpos; saveLastpoint[1] = ypos;
 		}
 	}
-	$("#saveCanvas").mousemove(function(e){saveDrawer(e)});
-	$("#saveCanvas").click(function(e){saveDown=1;saveDrawer(e);saveDown=0;});
+	$("#saveCanvas").mousemove(function(e){saveDrawer(e)})
+					.click(function(e){saveDown=1;saveDrawer(e);saveDown=0;});
 	$("<form name=\"saveForm\" id=\"saveForm\" action=\"#\" method=\"get\"></form>").appendTo("#save");
 	$("<input type=\"text\" name=\"saveName\" id=\"saveName\" />").appendTo("#saveForm");
 	$("<select name=\"saveClass\" id=\"saveClass\" size=\"1\" style=\"text-align:right\"></select>").appendTo("#saveForm");
@@ -326,6 +342,12 @@ $(document).ready(function(){
 			}
 			changeCurrentSlide(0, slides.length);
 			slides[0].onload = function() {
+				document.getElementById("draw").width = slides[0].width;
+				document.getElementById("draw").height = slides[0].height;
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+				ctx.fill();
+				changeColor(currentColor);
 				ctx.drawImage(slides[0],0,0);
 				$("#throbber-overlay").css("display","none");
 				slides.slice(0, -1);
@@ -358,11 +380,11 @@ $(document).ready(function(){
 					}
 				}
 				if (k<13) {
-					$("#loadBody").css('height', (k*21)+"px");
-					$("#loadBody").css('overflow-y', 'visible');
+					$("#loadBody").css('height', (k*21)+"px")
+								  .css('overflow-y', 'visible');
 				} else {
-					$("#loadBody").css('height', 290);
-					$("#loadBody").css('overflow-y', 'scroll');
+					$("#loadBody").css('height', 290)
+								  .css('overflow-y', 'scroll');
 				}
 			} else {
 				$("<tr><td>Keine Eintr&auml;ge</td></tr>").appendTo("#loadList");
@@ -378,11 +400,41 @@ $(document).ready(function(){
 	$("<span style=\"background-image:url('./document-new.png');\" class=\"tool\" alt=\"Laden\" ></span>").click(function(){
 		slides = new Array();
 		changeCurrentSlide(0, 1);
+		document.getElementById("draw").width = 0;
+		document.getElementById("draw").height = 0;
+		document.getElementById("draw").width = $(document).width();
+		document.getElementById("draw").height = ($(document).height()-30);
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
 		ctx.fill();
 		changeColor(currentColor);
 		}).appendTo("#tools");
+	
+	
+	// Create PDF import icon
+	$("<div id=\"import-overlay\" class=\"overlay\"></div>").appendTo("body");
+	$("<span style=\"background-image:url('./x-office-document.png');\" class=\"tool\" alt=\"PDF importieren\" ></span>").click(function(){$("#import-overlay").css("display", "block")}).appendTo("#tools");
+	$("<div id=\"import\"><h1>PDF importieren</h1></div>").appendTo("#import-overlay");
+	$("<iframe name=\"importIframe\" id=\"importIframe\" />").appendTo("#import");
+	$("<form name=\"importForm\" id=\"importForm\" action=\"./storage.php?action=pdfimport\" method=\"POST\" enctype=\"multipart/form-data\" target=\"importIframe\"><input type=\"hidden\" name=\"width\" value=\""+$(document).width()+"\" /><input type=\"file\" name=\"importFile\" id=\"importFile\"/><input type=\"submit\" name=\"importSubmit\" id=\"importSubmit\" value=\"Importieren\" /></form>").appendTo("#import");
+	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" />").click(function(){$("#import-overlay").css("display","none")}).appendTo("#import");
+	$("#importForm").submit(function(e) {
+			//e.preventDefault();
+			$("#import-overlay").css("display", "none");
+			$("#throbber-overlay").css("display","block");
+			$("#importIframe").load(function(){
+				slides = document.getElementById("importIframe").contentDocument.images;
+				changeCurrentSlide(0, slides.length);
+				document.getElementById("draw").width = document.getElementById("importIframe").contentDocument.images[0].width;
+				document.getElementById("draw").height = document.getElementById("importIframe").contentDocument.images[0].height;
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+				ctx.fill();
+				changeColor(currentColor);
+				ctx.drawImage(document.getElementById("importIframe").contentDocument.images[0],0,0);
+				$("#throbber-overlay").css("display","none");
+		});
+	});
 	
 	// Make all links (-> info window) open in new tab
 	for (i=0;i<document.links.length;i++) {

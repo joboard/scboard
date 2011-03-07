@@ -72,4 +72,29 @@ if (($_GET['action']=='getfiles') && ($_POST['class']) && ($_POST['name']) && ($
 if ($_GET['action'] == "classes") {
 	echo implode(" ",array_slice(scandir("./stored"), 2));
 }
+
+if (($_GET['action'] == "pdfimport") && ($_FILES['importFile']) && ($_POST['width'])) {
+	$width = preg_replace('/[^0-9]/', '', $_POST['width']);
+	function sendthrough ($command, $input) {
+		$descriptorspec = array(0 => array("pipe", "r"),1 => array("pipe", "w"),2 => array("pipe", "w"));
+		$process = proc_open($command, $descriptorspec, $pipes);
+		fwrite($pipes[0], $input);
+		fclose($pipes[0]);
+		$returnValue = stream_get_contents($pipes[1]);
+		fclose($pipes[1]);
+		$closing = proc_close($process);
+		return $returnValue;
+	}
+	$file = file_get_contents($_FILES['importFile']['tmp_name']);
+	$numberOfPages = sendthrough ('pdf2ps - - | grep showpage | wc -l' , $file); // $numberOfPages = sendthrough ('pdfinfo - | grep -x Pages:.* | tail -c +17 | tr -d "\n"' , $file); <-- this seems smarter, but it makes everything hang when you feed a non-pdf-file into it
+	if ($numberOfPages==0) {
+		die("<html><head></head><body><img src=\"./emblem-unreadable.png\" alt=\"\" /></body></html>");
+	}
+	$output="<html><head></head>";
+	for ($i=0;$i<$numberOfPages;$i++) {
+		//$output .= sendthrough("convert -density 200x200 -resize ".$width."x pdf:-[$i] png:- | base64 -w 0",$file)." ";
+		$output .= "<img src=\"data:image/png;base64,".sendthrough("convert -density 200x200 -resize ".$width."x pdf:-[$i] png:- | base64 -w 0",$file)."\" alt=\"\" />";
+	}
+	echo $output."</body></html>";
+}
 ?>
