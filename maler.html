@@ -91,8 +91,11 @@ $(document).ready(function(){
 		$(".marker").remove();
 		journalIndex++;
 		journal[journalIndex] = currentSlide + " " + document.getElementById("draw").toDataURL();
-		//alert(journal[journalIndex].substring(0,40));
-		journal = journal.slice(0, journalIndex+1)
+		journal = journal.slice(0, journalIndex+1);
+		if (journal.length == 15) {
+			journalIndex--;
+			journal.shift();
+		}
 	}
 	
 	var polyCoords = new Array();
@@ -209,7 +212,6 @@ $(document).ready(function(){
 			ctx.fill();
 			changeColor(currentColor);
 			changeCurrentSlide(currentSlide-1, slides.length);
-			//alert(load.src);
 			ctx.drawImage(slides[currentSlide],0,0);
 			saveJournal();
 		}
@@ -246,7 +248,6 @@ $(document).ready(function(){
 			journalIndex--;
 			var newImg = journal[journalIndex].split(" ");
 			if ((newImg[0]*1)!=currentSlide) {
-				//alert("they triggered me!");
 				slides[currentSlide] = new Image();
 				slides[currentSlide].src = document.getElementById("draw").toDataURL();
 				changeCurrentSlide(newImg[0]*1, slides.length);
@@ -486,27 +487,31 @@ $(document).ready(function(){
 	$("<div id=\"import-overlay\" class=\"overlay\"></div>").appendTo("body");
 	$("<span style=\"background-image:url('./x-office-document.png');\" class=\"tool\" alt=\"PDF importieren\" ></span>").click(function(){$("#import-overlay").css("display", "block")}).appendTo("#tools");
 	$("<div id=\"import\"><h1>PDF importieren</h1></div>").appendTo("#import-overlay");
-	$("<iframe name=\"importIframe\" id=\"importIframe\" />").appendTo("#import");
+	$("<iframe src=\"about:blank\" name=\"importIframe\" id=\"importIframe\" />").appendTo("#import");
 	$("<form name=\"importForm\" id=\"importForm\" action=\"./storage.php?action=pdfimport\" method=\"POST\" enctype=\"multipart/form-data\" target=\"importIframe\"><input type=\"hidden\" name=\"width\" value=\""+$(document).width()+"\" /><input type=\"file\" name=\"importFile\" id=\"importFile\"/><input type=\"submit\" name=\"importSubmit\" id=\"importSubmit\" value=\"Importieren\" /></form>").appendTo("#import");
 	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" />").click(function(){$("#import-overlay").css("display","none")}).appendTo("#import");
 	$("#importForm").submit(function(e) {
-			//e.preventDefault();
 			$("#import-overlay").css("display", "none");
 			$("#throbber-overlay").css("display","block");
 			$("#importIframe").load(function(){
-				slides = document.getElementById("importIframe").contentDocument.images;
-				changeCurrentSlide(0, slides.length);
-				document.getElementById("draw").width = document.getElementById("importIframe").contentDocument.images[0].width;
-				document.getElementById("draw").height = document.getElementById("importIframe").contentDocument.images[0].height;
-				ctx.fillStyle = "#FFFFFF";
-				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
-				ctx.fill();
-				journal = new Array ();
-				journalIndex = 0;
-				journal[0] = "0 "+document.getElementById("draw").toDataURL();
-				changeColor(currentColor);
-				ctx.drawImage(document.getElementById("importIframe").contentDocument.images[0],0,0);
 				$("#throbber-overlay").css("display","none");
+				if (document.getElementById("importIframe").contentDocument.images.length != 0) {
+					slides = document.getElementById("importIframe").contentDocument.images
+					changeCurrentSlide(0, slides.length);
+					document.getElementById("draw").width = document.getElementById("importIframe").contentDocument.images[0].width;
+					document.getElementById("draw").height = document.getElementById("importIframe").contentDocument.images[0].height;
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+					ctx.fill();
+					journal = new Array ();
+					journalIndex = 0;
+					journal[0] = "0 "+document.getElementById("draw").toDataURL();
+					changeColor(currentColor);
+					ctx.drawImage(document.getElementById("importIframe").contentDocument.images[0],0,0);
+				} else {
+					// Conversion has failed, server error
+					msgAlert("Serverfehler beim Importieren");
+				}
 		});
 	});
 	
