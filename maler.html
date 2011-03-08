@@ -82,6 +82,19 @@ $(document).ready(function(){
 			lastpoint[0] = e.pageX; lastpoint[1] = e.pageY;
 		}
 	}
+	
+	
+	var journal = new Array ();
+	var journalIndex = 0;
+	journal[0] = "0 "+document.getElementById("draw").toDataURL();
+	var saveJournal = function () {
+		$(".marker").remove();
+		journalIndex++;
+		journal[journalIndex] = currentSlide + " " + document.getElementById("draw").toDataURL();
+		//alert(journal[journalIndex].substring(0,40));
+		journal = journal.slice(0, journalIndex+1)
+	}
+	
 	var polyCoords = new Array();
 	var createPolygon = function(e) {
 		polyCoords[polyCoords.length] = new Array(e.pageX,e.pageY);
@@ -97,19 +110,21 @@ $(document).ready(function(){
 		ctx.fill();
 		$(".marker").remove();
 		polyCoords = new Array();
+		saveJournal();
 	}
 	var drawMode = 1;
 	var setDrawMode = function (newmode) {
 		$("#draw").unbind();
 		drawMode = newmode;
 		if (newmode==1) {
+			$(".marker").remove();
 			$("#draw").mousedown(function(){down=1;lastpoint[0]=-1})
-					  .mouseup(function(){down=0})
+					  .mouseup(function(){down=0;saveJournal()})
 					  .click(function(e){down=1;drawer(e);down=0})
-					  .mouseout(function(){down=0})
+					  .mouseout(function(){if (down==1){down=0;saveJournal()}else{down=0}})
 					  .mousemove(function(e){drawer(e)});
 		} else {
-			$("#draw").click(function(e){createPolygon(e)}).dblclick(function(e){fillPolygon()});
+			$("#draw").click(function(e){createPolygon(e)}).dblclick(function(e){fillPolygon();});
 		}
 	}
 	setDrawMode(drawMode);
@@ -196,6 +211,7 @@ $(document).ready(function(){
 			changeCurrentSlide(currentSlide-1, slides.length);
 			//alert(load.src);
 			ctx.drawImage(slides[currentSlide],0,0);
+			saveJournal();
 		}
 		}).appendTo("#tools");
 	$("<span style=\"background-image:url('./go-next.png');\" class=\"tool\" alt=\"n&auml;chste Folie\" id=\"next\"></span>").click(function(){
@@ -209,11 +225,12 @@ $(document).ready(function(){
 		if (slides[currentSlide]) {
 			ctx.drawImage(slides[currentSlide],0,0);
 		}
+		saveJournal();
 		}).appendTo("#tools");
 	
 	// Create 'Clear' icon and make it functional
 	$("<span class=\"spacer\"></span>").appendTo("#tools");
-	$("<span style=\"background-image:url('./edit-clear.png');\" class=\"tool\" alt=\"L&ouml;schen\" ></span>").click(function(){ctx.fillStyle = "#FFFFFF";ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);ctx.fill();slides[currentSlide] = new Image();}).appendTo("#tools");
+	$("<span style=\"background-image:url('./edit-clear.png');\" class=\"tool\" alt=\"L&ouml;schen\" ></span>").click(function(){saveJournal();ctx.fillStyle = "#FFFFFF";ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);ctx.fill();slides[currentSlide] = new Image();}).appendTo("#tools");
 	
 	
 	// Create Help+Info Window
@@ -221,6 +238,57 @@ $(document).ready(function(){
 	$("<div id=\"help\"><h1>Info</h1><p>Programming: Johannes Barthel<br />Icons: <a href=\"http://tango.freedesktop.org/Tango_Icon_Library\">Tango Icon Library</a><br />Javascript Toolkit: <a href=\"http://www.jquery.com/\">JQuery</a><br />Special thanks to <a href=\"http://scienceco.de/~levu/\">levu</a><br />for ideas, regexps and bug hunting.</p></div>").appendTo("#help-overlay");
 	$("<img src=\"./emblem-unreadable.png\" alt=\"Schlie&szlig;en\" />").click(function(){$("#help-overlay").css("display","none")}).appendTo("#help");
 	$("<span style=\"background-image:url('./help-browser.png');\" class=\"tool\" alt=\"hilfe\"></span>").click(function(){$("#help-overlay").css("display","block")}).appendTo("#tools");
+
+	// Create undo and redo icons
+	$("<span class=\"spacer\"></span>").appendTo("#tools");
+	$("<span style=\"background-image:url('./edit-undo.png');\" class=\"tool\" alt=\"R&uuml;ckg&auml;ngig\" ></span>").click(function(){
+		if (journalIndex>0) {
+			journalIndex--;
+			var newImg = journal[journalIndex].split(" ");
+			if ((newImg[0]*1)!=currentSlide) {
+				//alert("they triggered me!");
+				slides[currentSlide] = new Image();
+				slides[currentSlide].src = document.getElementById("draw").toDataURL();
+				changeCurrentSlide(newImg[0]*1, slides.length);
+			}
+			slides[currentSlide] = new Image();
+			slides[currentSlide].src = newImg[1];
+			slides[currentSlide].onload = function() {
+				document.getElementById("draw").width = slides[currentSlide].width;
+				document.getElementById("draw").height = slides[currentSlide].height;
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+				ctx.fill();
+				changeColor(currentColor);
+				ctx.drawImage(slides[currentSlide],0,0);
+			};
+			
+		}
+	}).appendTo("#tools");
+	$("<span style=\"background-image:url('./edit-redo.png');\" class=\"tool\" alt=\"Wiederholen\" ></span>").click(function(){
+		if (journalIndex<(journal.length-1)) {
+			journalIndex++;
+			var newImg = journal[journalIndex].split(" ");
+			if ((newImg[0]*1)!=currentSlide) {
+				slides[currentSlide] = new Image();
+				slides[currentSlide].src = document.getElementById("draw").toDataURL();
+				changeCurrentSlide(newImg[0]*1, slides.length);
+			}
+			slides[currentSlide] = new Image();
+			slides[currentSlide].src = newImg[1];
+			slides[currentSlide].onload = function() {
+				document.getElementById("draw").width = slides[currentSlide].width;
+				document.getElementById("draw").height = slides[currentSlide].height;
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
+				ctx.fill();
+				changeColor(currentColor);
+				ctx.drawImage(slides[currentSlide],0,0);
+			};
+			
+		}
+	}).appendTo("#tools");
+
 
 	// Create Message Overlay
 	$("<div id=\"msg-overlay\" class=\"overlay\"></div>").appendTo("body");
@@ -407,6 +475,9 @@ $(document).ready(function(){
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
 		ctx.fill();
+		journal = new Array ();
+		journalIndex = 0;
+		journal[0] = "0 "+document.getElementById("draw").toDataURL();
 		changeColor(currentColor);
 		}).appendTo("#tools");
 	
@@ -430,11 +501,15 @@ $(document).ready(function(){
 				ctx.fillStyle = "#FFFFFF";
 				ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);
 				ctx.fill();
+				journal = new Array ();
+				journalIndex = 0;
+				journal[0] = "0 "+document.getElementById("draw").toDataURL();
 				changeColor(currentColor);
 				ctx.drawImage(document.getElementById("importIframe").contentDocument.images[0],0,0);
 				$("#throbber-overlay").css("display","none");
 		});
 	});
+	
 	
 	// Make all links (-> info window) open in new tab
 	for (i=0;i<document.links.length;i++) {
