@@ -115,14 +115,15 @@ $(document).ready(function(){
 		polyCoords = new Array();
 		saveJournal();
 	}
+	var journalSaveTimeout;
 	var drawMode = 1;
 	var setDrawMode = function (newmode) {
 		$("#draw").unbind();
 		drawMode = newmode;
 		if (newmode==1) {
 			$(".marker").remove();
-			$("#draw").mousedown(function(){down=1;lastpoint[0]=-1})
-					  .mouseup(function(){down=0;saveJournal()})
+			$("#draw").mousedown(function(){window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;down=1;lastpoint[0]=-1})
+					  .mouseup(function(){down=0;journalSaveTimeout=window.setTimeout(function(){saveJournal()}, 1000)})
 					  .click(function(e){down=1;drawer(e);down=0})
 					  .mouseout(function(){if (down==1){down=0;saveJournal()}else{down=0}})
 					  .mousemove(function(e){drawer(e)});
@@ -204,6 +205,8 @@ $(document).ready(function(){
 	
 	// Create navigation icons
 	$("<span style=\"background-image:url('./go-previous.png');\" class=\"tool\" alt=\"vorherige Folie\" id=\"previous\"></span>").click(function(){
+		window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;
+		saveJournal();
 		slides[currentSlide] = new Image();
 		slides[currentSlide].src = document.getElementById("draw").toDataURL();
 		if (currentSlide!=0) {
@@ -213,10 +216,13 @@ $(document).ready(function(){
 			changeColor(currentColor);
 			changeCurrentSlide(currentSlide-1, slides.length);
 			ctx.drawImage(slides[currentSlide],0,0);
+			window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;
 			saveJournal();
 		}
 		}).appendTo("#tools");
 	$("<span style=\"background-image:url('./go-next.png');\" class=\"tool\" alt=\"n&auml;chste Folie\" id=\"next\"></span>").click(function(){
+		window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;
+		saveJournal();
 		slides[currentSlide] = new Image();
 		slides[currentSlide].src = document.getElementById("draw").toDataURL();
 		ctx.fillStyle = "#FFFFFF";
@@ -227,12 +233,13 @@ $(document).ready(function(){
 		if (slides[currentSlide]) {
 			ctx.drawImage(slides[currentSlide],0,0);
 		}
+		window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;
 		saveJournal();
 		}).appendTo("#tools");
 	
 	// Create 'Clear' icon and make it functional
 	$("<span class=\"spacer\"></span>").appendTo("#tools");
-	$("<span style=\"background-image:url('./edit-clear.png');\" class=\"tool\" alt=\"L&ouml;schen\" ></span>").click(function(){saveJournal();ctx.fillStyle = "#FFFFFF";ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);ctx.fill();slides[currentSlide] = new Image();}).appendTo("#tools");
+	$("<span style=\"background-image:url('./edit-clear.png');\" class=\"tool\" alt=\"L&ouml;schen\" ></span>").click(function(){window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;saveJournal();ctx.fillStyle = "#FFFFFF";ctx.fillRect(0, 0, document.getElementById("draw").width, document.getElementById("draw").height);ctx.fill();slides[currentSlide] = new Image();}).appendTo("#tools");
 	
 	
 	// Create Help+Info Window
@@ -244,6 +251,10 @@ $(document).ready(function(){
 	// Create undo and redo icons
 	$("<span class=\"spacer\"></span>").appendTo("#tools");
 	$("<span style=\"background-image:url('./edit-undo.png');\" class=\"tool\" alt=\"R&uuml;ckg&auml;ngig\" ></span>").click(function(){
+		if (journalSaveTimeout) {
+			window.clearTimeout(journalSaveTimeout);journalSaveTimeout = null;
+			saveJournal();
+		}
 		if (journalIndex>0) {
 			journalIndex--;
 			var newImg = journal[journalIndex].split(" ");
