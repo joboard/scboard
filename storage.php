@@ -1,15 +1,11 @@
 <?
 
-if (!$_GET['action']) {
+/*no action*/ if (!$_GET['action']) {
 	die("no action specified");
-}
-
-if (($_GET['action'] == "recognise") && ($_POST['img'])) {
+/*text recognition*/ }elseif (($_GET['action'] == "recognise") && ($_POST['img'])) {
 	//echo shell_exec("bash -c ".escapeshellarg("echo -n ".escapeshellarg($_POST['img'])." | base64 -d | convert -compress none png:- pnm:- | gocr -i -"));
 	echo shell_exec("bash -c ".escapeshellarg("echo -n ".escapeshellarg($_POST['img'])." | base64 -d | convert -compress none png:- pnm:- | ocrad"));
-}
-
-if ($_GET['action'] == "save") {
+/*save*/}elseif ($_GET['action'] == "save") {
 	if (($_POST['file']) && ($_POST['name']) && ($_POST['class'])) {
 		$name = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['name']);
 		$class = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['class']);
@@ -23,9 +19,7 @@ if ($_GET['action'] == "save") {
 		echo "Bitte Dateinamen angeben.";
 	}
 	
-}
-
-if ($_GET['action'] == "list") {
+/*list*/} elseif ($_GET['action'] == "list") {
 	if ($_POST['class']) {
 		$dirEscaped = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['class']);
 		if (file_exists("./stored/".$dirEscaped)) {
@@ -50,9 +44,7 @@ if ($_GET['action'] == "list") {
 	} else {
 		echo implode(" ", $files);
 	}
-}
-
-if (($_GET['action']=='getfiles') && ($_POST['class']) && ($_POST['name']) && ($_POST['date']) && ($_POST['width']) && ($_POST['height'])) {
+/*load*/} elseif (($_GET['action']=='getfiles') && ($_POST['class']) && ($_POST['name']) && ($_POST['date']) && ($_POST['width']) && ($_POST['height'])) {
 	$class = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['class']);
 	$name = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['name']);
 	$date = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['date']);
@@ -67,13 +59,9 @@ if (($_GET['action']=='getfiles') && ($_POST['class']) && ($_POST['name']) && ($
 	} else {
 		echo "no ./stored/$class/$name-$date";
 	}
-}
-
-if ($_GET['action'] == "classes") {
+/*list of classes*/} elseif ($_GET['action'] == "classes") {
 	echo implode(" ",array_slice(scandir("./stored"), 2));
-}
-
-if (($_GET['action'] == "pdfimport") && ($_FILES['importFile']) && ($_POST['width'])) {
+/*pdf import*/} elseif (($_GET['action'] == "pdfimport") && ($_FILES['importFile']) && ($_POST['width'])) {
 	$width = preg_replace('/[^0-9]/', '', $_POST['width']);
 	function sendthrough ($command, $input) {
 		$descriptorspec = array(0 => array("pipe", "r"),1 => array("pipe", "w"),2 => array("pipe", "w"));
@@ -96,5 +84,17 @@ if (($_GET['action'] == "pdfimport") && ($_FILES['importFile']) && ($_POST['widt
 		$output .= "<img src=\"data:image/png;base64,".sendthrough("convert -density 200x200 -resize ".$width."x pdf:-[$i] png:- | base64 -w 0",$file)."\" alt=\"\" />";
 	}
 	echo $output."</body></html>";
-}
+/*load in viewer*/} elseif (($_GET['action']=='view') && ($_POST['class']) && ($_POST['name']) && ($_POST['date'])) {
+	$class = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['class']);
+	$name = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['name']);
+	$date = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['date']);
+	if (file_exists("./stored/$class/$name-$date")) {
+		$images = array_slice(scandir("./stored/$class/$name-$date"), 2);
+		foreach ($images as $image) {
+			echo "./stored/$class/$name-$date/$image ";
+		}
+	} else {
+		echo "./emblem-unreadable.png";
+	}
+/*list of classes*/}
 ?>

@@ -1,0 +1,122 @@
+<html>
+<head>
+<title>Scboard Viewer</title>
+<style type="text/css">
+#image {display:none; border:2px black solid;position:absolute;top:50%;left:50%;margin-top:-11px;margin-left:-11px;z-index:1}
+body {text-align:center;vertical-align:middle;padding:0px; margin:0px; background-color:#222255; font-size:12px; font-face:Ubuntu,sans-serif}
+#tools {position:fixed;height:30px;bottom:0px;width:100%;text-align:center;padding:0px;margin:0px;vertical-align:middle;background-color:#222255;visibility:hidden;z-index:3}
+#toolmouseover {z-index:2;position:fixed;height:30px;bottom:0px;width:100%;}
+.tool {margin-left:2px;margin-right:2px;height:22px;width:22px;display:inline-block;margin-top:4px;}
+.overlay {position:fixed;width:100%;height:100%;background-color:rgba(0,0,0,0.8);display:none;z-index:4}
+#load {position:fixed;width:80%;height:80%;top:10%;left:10%;background-color:rgba(255,255,255,1);border:2px black solid;padding:10px}
+#loadListDiv {overflow-y:scroll;overflow-x:hidden;height:85%}
+#h1 {height:15%;text-align:left}
+th {text-align:left}
+#loadForm {display:inline-block;width:20%;text-align:right}
+h1 {display:inline-block;margin-right:60%;width:20%;text-align:left}
+</style>
+<script src="./jquery-1.5.1.min.js" type="application/x-javascript"></script>
+<script type="application/x-javascript">
+// <!--
+// <![CDATA[
+$(document).ready(function(){
+	$("noscript").remove();
+	$("<img id=\"image\" src=\"emblem-unreadable.png\" alt=\"Kein Bild geladen\" />").appendTo("body");
+	$("<div id=\"tools\"></div>").mouseout(function(){$("#tools").css("visibility","hidden")}).appendTo("body");
+	$("<div id=\"toolmouseover\"></div>").mouseover(function(){$("#tools").css("visibility","visible")}).appendTo("body");
+	$("<div id=\"throbber-overlay\" class=\"overlay\" style=\"text-align:center;vertical-align:middle\"><img src=\"./throbber.gif\" alt=\"Lade...\" style=\"background-color:#FFFFFF; padding:10px;margin-top:" + (($(document).height()/2)-26) + "px;border:2px #000000 solid;\" /></div>").appendTo("body");
+	$("<div id=\"load-overlay\" class=\"overlay\"><div id=\"load\"><h1>Laden</h1><form name=\"loadForm\" id=\"loadForm\" action=\"#\" method=\"get\"></form><div id=\"loadListDiv\"></div></div></div>").appendTo("body");
+	$("#throbber-overlay").css("display", "block");
+	var flipcharts;
+	var classes = new Array();
+	$.get("./storage.php", {'action':'classes'}, function(response) {
+		classes = response.split(" ");
+		$("<option value=\"\">Alle</option>").appendTo("#loadClass");
+		for (var i=0;i<classes.length;i++) {
+			$("<option>"+classes[i]+"</option>").appendTo("#loadClass");
+		}
+	});
+	var imageArray;
+	var newImages;
+	var loadFlipchart = function (what) {
+		$.post("./storage.php?action=view", {'name':what[1],'date':what[2],'class':what[0]}, function(imageList) {
+			imageArray = new Array();
+			newImages = imageList.split(" ");
+			imageArray[0] = new Image();
+			imageArray[0].src = newImages[0];
+			//alert(imageArray[0].src);
+			imageArray[0].onload = function() {
+				document.getElementById("image").src = imageArray[0].src;
+				$("#load-overlay").css("display","none");
+				var calcWidth = imageArray[0].width;
+				var calcHeight = imageArray[0].height;
+				if (calcWidth>($(document).width()*0.9)) {
+					//alert(($(document).width()*0.9)+" / "+calcWidth+" * "+calcHeight);
+					calcHeight = (($(document).width()*0.9)/calcWidth) * calcHeight;
+					calcWidth = ($(document).width()*0.9);
+					//alert (imageArray[0].width + " x "+ imageArray[0].height + " → " +calcWidth+" x "+calcHeight)
+				}
+				$("#image").css({"display":"block","width":calcWidth,"height":calcHeight+"px","margin-top":(-0.5*calcHeight)+"px","margin-left":(-0.5*calcWidth)+"px"});
+			}
+			for (var i=1;i<imageList.length;i++) {
+				imageArray[i] = new Image();
+				imageArray[i].src = newImages[i];
+			}
+		});
+	}
+	$("<select name=\"loadClass\" id=\"loadClass\" size=\"1\" style=\"text-align:right\"></select>").change(function(){listFlipcharts(this.value)}).appendTo("#loadForm");
+	var listFlipcharts = function (what) {
+		$("#loadListDiv").children().remove();
+		var listTable = $("<table>").css("width","100%");
+		$("<thead><tr><th>Klasse</th><th>Name</th><th>Datum</th></tr></thead>").appendTo(listTable);
+		var list = $("<tbody></tbody>").appendTo(listTable);
+		for (var i=0;i<flipcharts.length;i++) {
+			if ((what=="") || (what==flipcharts[i][0])){
+				$("<tr><td>"+flipcharts[i][0]+"</td><td>"+flipcharts[i][1]+"</td><td>"+new Date(flipcharts[i][2]*1000).toLocaleString()+"</td></tr>").click((function(what){return function(){loadFlipchart(what)}})(flipcharts[i])).appendTo(list);
+			}
+		}
+		listTable.appendTo("#loadListDiv");
+		$("#throbber-overlay").css("display","none");
+		$("#load-overlay").css("display","block");	
+	}
+	var request = $.post("./storage.php?action=list", function(flipchartsList) {
+		flipcharts = new Array();
+		var flipchartStrings = flipchartsList.split(" ");
+		for (var i=0;i<flipchartStrings.length;i++) {
+			flipcharts[i] = flipchartStrings[i].replace(/(-|#)/g, " ").split(" ");
+		}
+		listFlipcharts("");
+	});
+	var slide = 0;
+	var showSlide = function() {
+		var slideToShow = new Image();
+		//alert("hey2");
+		slideToShow.src = newImages[slide];
+		slideToShow.onload = function() {
+			document.getElementById("image").src = slideToShow.src;
+		}
+	}
+	$("<span style=\"background-image:url('./go-previous.png');\" class=\"tool\" alt=\"vorherige Folie\"></span>").click(function(){
+		if (slide>0) {
+			slide--;
+			showSlide();
+		}
+	}).appendTo("#tools");
+	$("<span style=\"background-image:url('./go-next.png');\" class=\"tool\" alt=\"naechste Folie\"></span>").click(function(){
+		//alert("hey"+(imageArray.length-1));
+		if (slide<(imageArray.length-2)) {
+			slide++;
+			showSlide();
+		}
+	}).appendTo("#tools");
+	$("<span style=\"background-image:url('./document-open.png');\" class=\"tool\" alt=\"Laden\"></span>").click(function(){
+		$("#load-overlay").css("display","block");
+	}).appendTo("#tools");
+});
+//]]>-->
+</script>
+</head>
+<body>
+<noscript><p>Bitte aktivieren Sie Javascript.</p></noscript>
+</body>
+</html>
